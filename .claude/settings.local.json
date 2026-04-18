@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir=false --import-alias=\"@/*\" --yes)",
+      "Read(//c//**)",
+      "Read(//mnt/**)",
+      "Bash(/c/Users/Administrator/AppData/Local/Programs/Antigravity/bin/antigravity --version)"
+    ]
+  }
+}
