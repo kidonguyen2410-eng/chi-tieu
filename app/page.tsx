@@ -1,16 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTransactionStore } from "@/hooks/useTransactionStore";
 import { filterTransactionsByPeriod, calculateStats, getChartData } from "@/lib/calculations";
 import { BalanceCard } from "@/components/dashboard/BalanceCard";
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
 import { TransactionList } from "@/components/transactions/TransactionList";
-import { Wallet } from "lucide-react";
+import { TransactionForm } from "@/components/transactions/TransactionForm";
+import { loadDemoData, saveTransactions } from "@/lib/storage";
+import { Wallet, Plus, FlaskConical, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 export default function DashboardPage() {
   const { transactions, totalBalance, isLoaded } = useTransactionStore();
+  const [addOpen, setAddOpen] = useState(false);
 
   const now = new Date();
 
@@ -41,6 +46,19 @@ export default function DashboardPage() {
     [transactions]
   );
 
+  const handleLoadDemo = () => {
+    loadDemoData();
+    window.location.reload();
+    toast.success("Đã tải dữ liệu demo");
+  };
+
+  const handleClearAll = () => {
+    if (!confirm("Xóa toàn bộ dữ liệu? Không thể khôi phục lại.")) return;
+    saveTransactions([]);
+    window.location.reload();
+    toast.success("Đã xóa tất cả dữ liệu");
+  };
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-dvh">
@@ -48,6 +66,62 @@ export default function DashboardPage() {
           <Wallet className="h-8 w-8 animate-pulse" />
           <span className="text-sm">Đang tải...</span>
         </div>
+      </div>
+    );
+  }
+
+  // Empty state — new user
+  if (transactions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center gap-6">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="h-24 w-24 rounded-3xl bg-primary/10 flex items-center justify-center"
+        >
+          <Wallet className="h-12 w-12 text-primary" />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-2"
+        >
+          <h1 className="text-2xl font-bold">Chi Tiêu Thông Minh</h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Theo dõi thu chi cá nhân dễ dàng.<br />
+            Bắt đầu bằng cách thêm giao dịch đầu tiên!
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="w-full max-w-xs space-y-3"
+        >
+          {/* Primary CTA */}
+          <button
+            onClick={() => setAddOpen(true)}
+            className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base shadow-lg shadow-primary/30 active:scale-95 transition-transform"
+          >
+            <Plus className="h-5 w-5" />
+            Thêm giao dịch đầu tiên
+          </button>
+
+          {/* Demo CTA */}
+          <button
+            onClick={handleLoadDemo}
+            className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border border-border text-muted-foreground font-medium text-sm hover:bg-muted active:scale-95 transition-all"
+          >
+            <FlaskConical className="h-4 w-4" />
+            Xem thử với dữ liệu demo
+          </button>
+        </motion.div>
+
+        <TransactionForm open={addOpen} onOpenChange={setAddOpen} />
       </div>
     );
   }
@@ -60,9 +134,13 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-foreground">Xin chào 👋</p>
           <h1 className="text-xl font-bold">Chi Tiêu Thông Minh</h1>
         </div>
-        <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center">
-          <Wallet className="h-5 w-5 text-primary" />
-        </div>
+        <button
+          onClick={handleClearAll}
+          className="h-10 w-10 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          title="Xóa tất cả dữ liệu"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Balance Card */}

@@ -4,18 +4,18 @@ import { SEED_TRANSACTIONS } from "./seed-data";
 const STORAGE_KEY = "viet_expense_transactions";
 
 export function loadTransactions(): Transaction[] {
-  if (typeof window === "undefined") return SEED_TRANSACTIONS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      // First visit: seed demo data
-      saveTransactions(SEED_TRANSACTIONS);
-      return SEED_TRANSACTIONS;
-    }
+    if (!raw) return [];
     return JSON.parse(raw) as Transaction[];
   } catch {
-    return SEED_TRANSACTIONS;
+    return [];
   }
+}
+
+export function loadDemoData(): void {
+  saveTransactions(SEED_TRANSACTIONS);
 }
 
 export function saveTransactions(transactions: Transaction[]): void {
