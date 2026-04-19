@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTransactionStore } from "@/hooks/useTransactionStore";
 import { filterTransactionsByPeriod, calculateStats, getChartData } from "@/lib/calculations";
 import { BalanceCard } from "@/components/dashboard/BalanceCard";
@@ -9,13 +9,116 @@ import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
 import { TransactionList } from "@/components/transactions/TransactionList";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { loadDemoData, saveTransactions } from "@/lib/storage";
-import { Wallet, Plus, FlaskConical, Trash2 } from "lucide-react";
+import { loadProfile, saveProfile, UserProfile } from "@/lib/profile";
+import { Wallet, Plus, FlaskConical, Trash2, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+
+// Onboarding — ask for name
+function OnboardingScreen({ onDone }: { onDone: (name: string) => void }) {
+  const [name, setName] = useState("");
+  const [loadingDemo, setLoadingDemo] = useState(false);
+
+  const handleStart = () => {
+    if (!name.trim()) return;
+    onDone(name.trim());
+  };
+
+  const handleDemo = () => {
+    const n = name.trim() || "Bạn";
+    setLoadingDemo(true);
+    loadDemoData();
+    onDone(n);
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center gap-8">
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 280, damping: 20 }}
+        className="h-24 w-24 rounded-3xl bg-primary/10 flex items-center justify-center"
+      >
+        <Wallet className="h-12 w-12 text-primary" />
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="space-y-2"
+      >
+        <h1 className="text-2xl font-bold">Chi Tiêu Thông Minh</h1>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Theo dõi thu chi cá nhân dễ dàng, nhanh chóng.
+        </p>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="w-full max-w-xs space-y-4"
+      >
+        <div className="space-y-2 text-left">
+          <label className="text-sm font-semibold">Bạn tên là gì?</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleStart()}
+            placeholder="Nhập tên của bạn..."
+            autoFocus
+            className="w-full h-12 px-4 rounded-2xl border border-border bg-card text-base focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all"
+          />
+        </div>
+
+        <button
+          onClick={handleStart}
+          disabled={!name.trim()}
+          className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base shadow-lg shadow-primary/25 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Bắt đầu
+          <ArrowRight className="h-5 w-5" />
+        </button>
+
+        <button
+          onClick={handleDemo}
+          disabled={loadingDemo}
+          className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl border border-border text-muted-foreground font-medium text-sm hover:bg-muted active:scale-95 transition-all"
+        >
+          <FlaskConical className="h-4 w-4" />
+          Xem thử với dữ liệu demo
+        </button>
+      </motion.div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { transactions, totalBalance, isLoaded } = useTransactionStore();
   const [addOpen, setAddOpen] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
+  useEffect(() => {
+    setProfile(loadProfile());
+    setProfileLoaded(true);
+  }, []);
+
+  const handleOnboardingDone = (name: string) => {
+    const p: UserProfile = { name, createdAt: new Date().toISOString() };
+    saveProfile(p);
+    setProfile(p);
+    // Reload to pick up any demo data
+    window.location.reload();
+  };
+
+  const handleClearAll = () => {
+    if (!confirm("Xóa toàn bộ dữ liệu? Không thể khôi phục.")) return;
+    saveTransactions([]);
+    window.location.reload();
+  };
 
   const now = new Date();
 
@@ -42,24 +145,15 @@ export default function DashboardPage() {
   );
 
   const recentTx = useMemo(
-    () => [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20),
+    () =>
+      [...transactions]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 20),
     [transactions]
   );
 
-  const handleLoadDemo = () => {
-    loadDemoData();
-    window.location.reload();
-    toast.success("Đã tải dữ liệu demo");
-  };
-
-  const handleClearAll = () => {
-    if (!confirm("Xóa toàn bộ dữ liệu? Không thể khôi phục lại.")) return;
-    saveTransactions([]);
-    window.location.reload();
-    toast.success("Đã xóa tất cả dữ liệu");
-  };
-
-  if (!isLoaded) {
+  // Wait for both localStorage reads to complete
+  if (!isLoaded || !profileLoaded) {
     return (
       <div className="flex items-center justify-center min-h-dvh">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -70,57 +164,35 @@ export default function DashboardPage() {
     );
   }
 
-  // Empty state — new user
+  // First visit: no profile yet
+  if (!profile) {
+    return <OnboardingScreen onDone={handleOnboardingDone} />;
+  }
+
+  // Has profile but no transactions: show quick-start
   if (transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center gap-6">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
           className="h-24 w-24 rounded-3xl bg-primary/10 flex items-center justify-center"
         >
           <Wallet className="h-12 w-12 text-primary" />
         </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-2"
-        >
-          <h1 className="text-2xl font-bold">Chi Tiêu Thông Minh</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            Theo dõi thu chi cá nhân dễ dàng.<br />
-            Bắt đầu bằng cách thêm giao dịch đầu tiên!
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="w-full max-w-xs space-y-3"
-        >
-          {/* Primary CTA */}
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold">Xin chào, {profile.name}! 👋</h2>
+          <p className="text-muted-foreground text-sm">Thêm giao dịch đầu tiên để bắt đầu.</p>
+        </div>
+        <div className="w-full max-w-xs space-y-3">
           <button
             onClick={() => setAddOpen(true)}
-            className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base shadow-lg shadow-primary/30 active:scale-95 transition-transform"
+            className="w-full flex items-center justify-center gap-2 h-14 rounded-2xl bg-primary text-primary-foreground font-semibold text-base shadow-lg shadow-primary/25 active:scale-95 transition-all"
           >
             <Plus className="h-5 w-5" />
             Thêm giao dịch đầu tiên
           </button>
-
-          {/* Demo CTA */}
-          <button
-            onClick={handleLoadDemo}
-            className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border border-border text-muted-foreground font-medium text-sm hover:bg-muted active:scale-95 transition-all"
-          >
-            <FlaskConical className="h-4 w-4" />
-            Xem thử với dữ liệu demo
-          </button>
-        </motion.div>
-
+        </div>
         <TransactionForm open={addOpen} onOpenChange={setAddOpen} />
       </div>
     );
@@ -132,7 +204,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between px-4 pt-5">
         <div>
           <p className="text-xs text-muted-foreground">Xin chào 👋</p>
-          <h1 className="text-xl font-bold">Chi Tiêu Thông Minh</h1>
+          <h1 className="text-xl font-bold">{profile.name}</h1>
         </div>
         <button
           onClick={handleClearAll}
@@ -143,10 +215,8 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Balance Card */}
       <BalanceCard totalBalance={totalBalance} monthStats={monthStats} />
 
-      {/* Stats Overview */}
       <StatsOverview
         todayStats={todayStats}
         weekStats={weekStats}
@@ -154,12 +224,10 @@ export default function DashboardPage() {
         yearStats={yearStats}
       />
 
-      {/* Chart */}
       {chartData.some((d) => d.income > 0 || d.expense > 0) && (
         <ExpenseChart data={chartData} title="Thu chi tháng này" />
       )}
 
-      {/* Recent Transactions */}
       <div className="px-4">
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">Giao dịch gần đây</h2>
         <TransactionList transactions={recentTx} emptyMessage="Chưa có giao dịch. Bấm + để thêm!" />

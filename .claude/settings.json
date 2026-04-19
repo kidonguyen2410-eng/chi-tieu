@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/ADMINI~1/AppData/Local/Temp/claude/c--webbbbacc/bd12ffaf-eb73-48d2-a517-9c0e1c8c428d/tasks/**)",
+      "Read(//c/Users/Administrator/AppData/Local/Temp/claude/c--webbbbacc//**)",
+      "Bash(node -e \"const l = require\\('lucide-react'\\); ['CheckCircle','ImagePlus','FlaskConical','Receipt','LayoutDashboard','Wallet','TrendingUp','TrendingDown'].forEach\\(n => console.log\\(n, !!l[n]\\)\\)\")",
+      "Bash(npm run *)"
+    ]
+  }
+}
